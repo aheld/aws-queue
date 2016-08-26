@@ -32,10 +32,15 @@ queue_arn = queue.attributes['QueueArn']
 # Ensure that we are subscribed to the SNS topic
 subscribed = False
 # topic = sns.Topic(topic_arn)
+# for subscription in topic.subscriptions.all():
+#     print("Subscription\n[{}]\n -------->[{}]\n\n".format(
+#         subscription.arn, 
+#         subscription.attributes['Endpoint']))
+
 for subscription in topic.subscriptions.all():
     if subscription.attributes['Endpoint'] == queue_arn:
         subscribed = True
-        print("[{}] already subscribed to sns:[{}]".format(queue.url, topic.arn))
+        # print("[{}] already subscribed to sns:[{}]".format(queue.url, topic.arn))
         break
 
 if not subscribed:
@@ -59,18 +64,26 @@ if 'Statement' not in policy:
         'Policy': json.dumps(policy)
     })
 
+print("\n\n*************")
+print("\nSend a message to this queue:\n")
+print("aws sns publish --topic {} --message '{}'".format(topic.arn, json.dumps({'name':'Customer1'})))
 
 from pprint import pprint
 
-for m in queue.receive_messages(WaitTimeSeconds=20):
-    print("\n************\nSQS Message Envelope:")
-    pprint(m)
-    
-    body = json.loads(m.body)
-    try:
-        message = json.loads(body['Message'])
-    except:
-        message = body['Message']
+for run_count in range(3):
+    for i, m in enumerate(queue.receive_messages(WaitTimeSeconds=10, MaxNumberOfMessages=10)):
+        # print("\n************\nMessage: {}\nSQS Message Envelope:".format(i))
+        # pprint(m)
         
-    print('\n************\ninner message')
-    pprint(message)
+        body = json.loads(m.body)
+        try:
+            message = json.loads(body['Message'])
+        except:
+            message = body['Message']
+            
+        print('\n************: Inner message')
+        pprint(message)
+
+        print('*****************: Delete message')
+        m.delete()
+        
